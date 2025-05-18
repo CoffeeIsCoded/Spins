@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpinZone - Slot Machine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .slot-machine {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .slots {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 2rem 0;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            flex-wrap: wrap;
+        }
+
+        .reel {
+            width: 20vw;
+            height: 20vw;
+            max-width: 150px;
+            max-height: 150px;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .reel-content {
+            position: absolute;
+            width: 100%;
+            transition: top 4s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+
+        .symbol {
+            height: 20vw;
+            max-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        button {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 50px;
+            background: #007bff;
+            color: white;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 120px;
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        button:hover:not(:disabled) {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .balance {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .bet-controls {
+            margin: 1rem 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            align-items: center;
+        }
+
+        input {
+            padding: 0.8rem;
+            border-radius: 5px;
+            border: none;
+            width: 100px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .win-animation {
+            animation: win 1s ease infinite;
+        }
+
+        @keyframes win {
+            0% { color: white; }
+            50% { color: #00ff00; }
+            100% { color: white; }
+        }
+
+        @media (max-width: 768px) {
+            .reel {
+                width: 25vw;
+                height: 25vw;
+            }
+
+            .symbol {
+                font-size: 2rem;
+            }
+
+            button {
+                padding: 0.8rem 1.5rem;
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .slot-machine {
+                padding: 1rem;
+            }
+
+            .reel {
+                width: 28vw;
+                height: 28vw;
+            }
+
+            .symbol {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎰 SpinZone 🎰</h1>
+        <div class="balance">Balance: $<span id="balance">100</span></div>
+
+        <div class="slot-machine">
+            <div class="slots">
+                <div class="reel">
+                    <div class="reel-content" id="reel1"></div>
+                </div>
+                <div class="reel">
+                    <div class="reel-content" id="reel2"></div>
+                </div>
+                <div class="reel">
+                    <div class="reel-content" id="reel3"></div>
+                </div>
+            </div>
+
+            <div class="bet-controls">
+                <button onclick="changeBet(-10)">-10</button>
+                <input type="number" id="betAmount" value="10" min="10" max="100">
+                <button onclick="changeBet(10)">+10</button>
+                <button onclick="setMaxBet()">Max</button>
+            </div>
+
+            <div class="controls">
+                <button id="spinButton" onclick="spin()">SPIN!</button>
+                <button onclick="resetGame()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const symbols = ['🍒', '🍊', '🍋', '🍇', '💎', '7️⃣'];
+        let balance = 100;
+        let isSpinning = false;
+
+        function initializeReels() {
+            symbols.forEach(symbol => {
+                for(let i = 0; i < 3; i++) {
+                    symbols.forEach(s => {
+                        const div = document.createElement('div');
+                        div.className = 'symbol';
+                        div.textContent = s;
+                        document.getElementById('reel1').appendChild(div.cloneNode(true));
+                        document.getElementById('reel2').appendChild(div.cloneNode(true));
+                        document.getElementById('reel3').appendChild(div.cloneNode(true));
+                    });
+                }
+            });
+        }
+
+        function spin() {
+            if(isSpinning) return;
+            const bet = parseInt(document.getElementById('betAmount').value);
+            const spinButton = document.getElementById('spinButton');
+
+            if(bet > balance) {
+                alert('Not enough funds!');
+                return;
+            }
+            
+            if(bet < 10) {
+                alert('Minimum bet is $10!');
+                return;
+            }
+            
+            balance -= bet;
+            updateBalance();
+            isSpinning = true;
+            spinButton.disabled = true;
+
+            const reels = document.querySelectorAll('.reel-content');
+            const results = [];
+
+            reels.forEach((reel, index) => {
+                const randomPosition = Math.floor(Math.random() * symbols.length * 3) * 150;
+                reel.style.transition = 'top 4s cubic-bezier(0.25, 0.1, 0.25, 1)';
+                reel.style.top = `-${randomPosition}px`;
+                
+                const resultIndex = Math.floor((randomPosition / 150) % symbols.length);
+                results[index] = symbols[resultIndex];
+            });
+
+            setTimeout(() => {
+                checkWin(results, bet);
+                isSpinning = false;
+                spinButton.disabled = false;
+                checkGameOver();
+            }, 4000);
+        }
+
+        function checkWin(results, bet) {
+            let winAmount = 0;
+            const payouts = {
+                '💎': 15,
+                '7️⃣': 12,
+                '🍇': 8,
+                '🍒': 5,
+                '🍊': 5,
+                '🍋': 5
+            };
+
+            if(results[0] === results[1] && results[1] === results[2]) {
+                winAmount = bet * payouts[results[0]];
+                showWinAnimation();
+                alert(`JACKPOT! ${results[0]}${results[0]}${results[0]}\nYou won $${winAmount}!`);
+            } else if(results[0] === results[1] || results[1] === results[2]) {
+                winAmount = bet * 2;
+                showWinAnimation();
+                alert(`Winner! ${results[0]}${results[1]}${results[2]}\nYou won $${winAmount}!`);
+            }
+            
+            if(winAmount > 0) {
+                balance += winAmount;
+                updateBalance();
+            }
+        }
+
+        function showWinAnimation() {
+            const reels = document.querySelectorAll('.reel');
+            reels.forEach(reel => {
+                reel.style.animation = 'win-border 1s ease';
+                setTimeout(() => {
+                    reel.style.animation = '';
+                }, 1000);
+            });
+        }
+
+        function updateBalance() {
+            const balanceElement = document.getElementById('balance');
+            balanceElement.textContent = balance;
+            balanceElement.classList.add('win-animation');
+            setTimeout(() => {
+                balanceElement.classList.remove('win-animation');
+            }, 1000);
+        }
+
+        function changeBet(amount) {
+            const betInput = document.getElementById('betAmount');
+            let newBet = parseInt(betInput.value) + amount;
+            newBet = Math.max(10, Math.min(Math.min(100, balance), newBet));
+            betInput.value = newBet;
+        }
+
+        function setMaxBet() {
+            const maxBet = Math.min(100, balance);
+            document.getElementById('betAmount').value = maxBet;
+        }
+
+        function resetGame() {
+            balance = 100;
+            updateBalance();
+            document.getElementById('betAmount').value = 10;
+        }
+
+        function checkGameOver() {
+            if(balance < 10) {
+                setTimeout(() => {
+                    alert('Game Over! Reset to play again.');
+                }, 500);
+            }
+        }
+
+        // Initialize game
+        initializeReels();
+    </script>
+</body>
+</html>
